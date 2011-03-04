@@ -75,15 +75,15 @@ def get_options():
 
 def safecopy(*args):
     debug(args)
-    proc = Popen(["/usr/bin/safecopy"] + list(args), stdout=PIPE)
+    proc = Popen(["/usr/bin/safecopy"] + list(args), stdout=PIPE, stderr=PIPE)
     proc.wait()
     return proc
 
 
 def safecp(source, dest):
-    #FIXME: Fails with empty source files
     def cleanfiles(verbose=debug):
-        for file in ("stage3.badblocks", "stage2.badblocks", "stage1.badblocks"):
+        for file in ("stage3.badblocks", "stage2.badblocks",
+            "stage1.badblocks"):
             if os.path.exists(file):
                 verbose("%s: exist, removing" % file)
                 os.remove(file)
@@ -107,12 +107,29 @@ def safecp(source, dest):
             moreinfo("Starting stage%d" % stage)
             proc = safecopy("--stage%d" % stage, source, dest)
             debug("safecopy stdout:\n%s" % "".join(proc.stdout.readlines()))
+            moreinfo("safecopy stderr:\n%s" % "".join(proc.stderr.readlines()))
             if proc.returncode:
                 error("safecopy returned %d" % proc.returncode)
                 cleanfiles()
                 return proc.returncode
         cleanfiles()
         return 0
+
+    elif os.path.isdir(source):
+        if not options.recursive:
+            error("Omiting the directory: %s" % source)
+            return 3
+        else:
+            if not os.path.isdir(dest):
+                os.mkdir(dest)
+            result = 0
+            for subsource in os.listdir(source):
+                subdest = os.path.join(dest, os.path.basename(subsource))
+                complete_subsource = os.path.join(source, subsource)
+                result += safecp(complete_subsource, subdest)
+            return result
+
+
     else:
         raise NotImplementedError("Falta escribir esta caracteristica")
 
@@ -123,7 +140,7 @@ def main(options, args):
         return 2
     else:
         if len(args) < 2:
-            error("Must be, at least, to arguments. invoque -h option.")
+            error("missing file operand. Invoque -h option.")
             return 3
         else:
             sources = args[:-1]
