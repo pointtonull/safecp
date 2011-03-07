@@ -97,7 +97,8 @@ def safecp(source, dest):
     if os.path.isfile(source):
         if os.path.exists(dest):
             if os.path.isfile(dest):
-                moreinfo("Dest will be overwrited.")
+                info("No dest will be overwrited.")
+                return 6
             elif os.path.isdir(dest):
                 dest = os.path.join(dest, os.path.basename(source))
                 moreinfo("New dest will be %s" % dest)
@@ -120,15 +121,18 @@ def safecp(source, dest):
             error("Omiting the directory: %s" % source)
             return 3
         else:
-            if not os.path.isdir(dest):
-                os.mkdir(dest)
+
             result = 0
             for subsource in os.listdir(source):
-                subdest = os.path.join(dest, os.path.basename(subsource))
                 complete_subsource = os.path.join(source, subsource)
+                subdest = os.path.join(dest, os.path.basename(subsource))
+                if not os.path.isdir(subdest):
+                    if os.path.isfile(subdest):
+                        warning("omiting file: %s" % source)
+                        return 4
+                    os.mkdir(subdest)
                 result += safecp(complete_subsource, subdest)
             return result
-
 
     else:
         raise NotImplementedError("Falta escribir esta caracteristica")
